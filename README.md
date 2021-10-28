@@ -59,7 +59,6 @@ Provide the following inputs for the template:
 - **TargetValues:** Specify the target key values specified above. Default is \*, which targets every instance. Refer to [Target](https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_Target.html) for more details.
 - **TargetOUs:** Organization Unit (OU) IDs which are in scope for this solution in a comma-separated format (e.g., ou-abc1-abc12ab1,ou-def2-def12de1).
 
-
 ## Invoking the solution using a State Manager association
 
 A [State Manager association](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-state.html#state-manager-association-what-is) is a configuration assigned to your managed instances. The configuration defines the state you want to maintain on your instances.
