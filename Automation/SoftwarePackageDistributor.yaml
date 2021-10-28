@@ -1,0 +1,90 @@
+description: This document will distribute the package to all the targeted member accounts
+schemaVersion: '0.3'
+assumeRole: '{{ AutomationAssumeRole }}'
+parameters:
+  action:
+    description: (Required) Specify whether or not to install or uninstall the package.
+    type: String
+    allowedValues:
+      - Install
+      - Uninstall
+  installationType:
+    description: '(Optional) Specify the type of installation. Uninstall and reinstall: The application is taken offline until the reinstallation process completes. In-place update: The application is available while new or updated files are added to the installation.'
+    type: String
+    allowedValues:
+      - Uninstall and reinstall
+      - In-place update
+    default: Uninstall and reinstall
+  name:
+    description: (Required) The package to install/uninstall.
+    type: String
+    allowedPattern: '^arn:[a-z0-9][-.a-z0-9]{0,62}:[a-z0-9][-.a-z0-9]{0,62}:([a-z0-9][-.a-z0-9]{0,62})?:([a-z0-9][-.a-z0-9]{0,62})?:(package|document)\/[a-zA-Z0-9/:.\-_]{1,128}$|^[a-zA-Z0-9/:.\-_]{1,128}$'
+  version:
+    description: '(Optional) The version of the package to install or uninstall. If you don''t specify a version, the system installs the latest published version by default. The system will only attempt to uninstall the version that is currently installed. If no version of the package is installed, the system returns an error.'
+    type: String
+    default: ''
+  additionalArguments:
+    description: '(Optional) The additional parameters to provide to your install, uninstall, or update scripts.'
+    type: StringMap
+    displayType: textarea
+    default: {}
+    maxChars: 4096
+  AutomationAssumeRole:
+    type: String
+    description: 'The IAM role required to execute this document '
+  InstanceId:
+    type: String
+    default: '*'
+mainSteps:
+  - name: sendCommandToDistributePackage
+    action: 'aws:executeScript'
+    inputs:
+      Runtime: python3.7
+      Handler: script_handler
+      Script: |-
+        import sys
+        import boto3
+        import json
+        import botocore
+
+        def script_handler(events, context):
+          client = boto3.client('ssm')
+          
+          instanceId = events['instanceId']
+          name = events['name']
+          action = events['action']
+          installationType = events['installationType']
+          version = events['version']
+          additionalArguments = events['additionalArguments']
+          packageConfigDetails = {}
+                  
+          packageConfigDetails["name"] = [name]
+          packageConfigDetails["action"] = [action]
+          packageConfigDetails["installationType"] = [installationType]
+          
+          if not version:
+            print('No version specified')
+          else:
+            packageConfigDetails["version"] = [version]
+            
+          if not additionalArguments:
+            print('No additional arguments specified')
+          else:
+            packageConfigDetails["additionalArguments"] = [additionalArguments]
+                    
+          response = client.send_command(
+            InstanceIds=[
+                    instanceId,
+                ],
+            DocumentName='AWS-ConfigureAWSPackage',
+            DocumentVersion='$DEFAULT',
+            Parameters=packageConfigDetails
+          )
+      InputPayload:
+        name: '{{ name }}'
+        action: '{{ action }}'
+        installationType: '{{installationType}}'
+        version: '{{ version }}'
+        additionalArguments: '{{ additionalArguments }}'
+        instanceId: '{{ InstanceId }}'
+    isEnd: true

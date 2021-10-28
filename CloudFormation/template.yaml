@@ -1,0 +1,456 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: 'CloudFormation template to deploy all the required resources for the centralized software package deployment solution using AWS SSM Distributor'
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - 
+        Label:
+          default: 'IAM Roles'
+        Parameters:
+          - CreateCloudFormationStackSetRoles
+          - CreateSystemsManagerRoles
+          - DeploymentTargets
+      - 
+        Label: 
+          default: 'Automation details'
+        Parameters: 
+          - ManagementAccountId
+          - TargetOUs
+          - TargetKey
+          - TargetValues
+    ParameterLabels:
+      CreateCloudFormationStackSetRoles:
+        default: 'CreateCloudFormationStackSetRoles'
+      CreateSystemsManagerRoles:
+        default: 'CreateSystemsManagerRoles'
+      DeploymentTargets:
+        default: 'DeploymentTargets'
+      ManagementAccountId:
+        default: 'ManagementAccountId'
+      TargetOUs:
+        default: 'TargetOUs'
+      TargetKey:
+        default: 'TargetKey'
+      TargetValues:
+        default: 'TargetValues'
+
+Parameters:
+  CreateCloudFormationStackSetRoles:
+    Type: String
+    AllowedValues:
+    - 'true'
+    - 'false'
+    Description: Specify if the CloudFormation StackSet IAM roles should be provisioned, these roles will be used to deploy AWS-SystemsManager-AutomationExecutionRole in each of the target accounts. Refer to https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-prereqs.html for more details.
+  CreateSystemsManagerRoles:
+    Type: String
+    AllowedValues:
+    - 'true'
+    - 'false'
+    Description: Specify if the AWS Systems Manager IAM roles required to run automation in multiple accounts and regions should be provisioned. Refer to https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-automation-multiple-accounts-and-regions.html for more details.
+  DeploymentTargets:
+    Description: Specify the AWS OrganizationalUnitIds, for eg. ou-abc1-abc12ab1,ou-def2-def12de1
+    Type: CommaDelimitedList
+  TargetKey:
+    Type: String
+    Description: Specify which instances have to be targeted for this solution. Allowed values - ParameterValues, ResourceGroup or begin with tag:, AWS::EC2::Instance, InstanceIds (default), instanceids. Refer https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_Target.html for more details.
+    Default: 'InstanceIds'
+  TargetValues:
+    Type: String
+    Description: Specify the values of the target keys specified above. Default is *, which targets all instances. Refer https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_Target.html for more details.
+    Default: '*'
+  ManagementAccountId:
+    Description: (Required) AWS Organization's Management account ID.
+    Type: String
+    Default: '123456789012'
+
+Conditions:
+  CreateSystemsManagerRoles:
+    Fn::Equals:
+    - Ref: CreateSystemsManagerRoles
+    - 'true'
+  CreateCloudFormationStackSetRoles:
+    Fn::Equals:
+    - Ref: CreateCloudFormationStackSetRoles
+    - 'true'
+
+Resources:
+  CSDAddSoftwarePackageToDistributor:
+    Type: "AWS::SSM::Document"
+    Properties:
+      Name: "CSD-AddSoftwarePackageToDistributor"
+      Content: !Sub |
+          {
+            "description" : "This document can be used to centralize your software package deployment solution across accounts and regions using AWS Systems Manager",
+            "schemaVersion" : "0.3",
+            "assumeRole" : "{{ AutomationAssumeRole }}",
+            "parameters" : {
+              "InstanceId" : {
+                "type" : "String",
+                "default" : "*"
+              },
+              "action" : {
+                "description" : "(Required) Specify whether or not to install or uninstall the package.",
+                "type" : "String",
+                "allowedValues" : [ "Install", "Uninstall" ]
+              },
+              "installationType" : {
+                "description" : "(Optional) Specify the type of installation. Uninstall and reinstall: The application is taken offline until the reinstallation process completes. In-place update: The application is available while new or updated files are added to the installation.",
+                "type" : "String",
+                "allowedValues" : [ "Uninstall and reinstall", "In-place update" ],
+                "default" : "Uninstall and reinstall"
+              },
+              "name" : {
+                "description" : "(Required) The package to install/uninstall.",
+                "type" : "String",
+                "allowedPattern" : "^arn:[a-z0-9][-.a-z0-9]{0,62}:[a-z0-9][-.a-z0-9]{0,62}:([a-z0-9][-.a-z0-9]{0,62})?:([a-z0-9][-.a-z0-9]{0,62})?:(package|document)\\/[a-zA-Z0-9/:.\\-_]{1,128}$|^[a-zA-Z0-9/:.\\-_]{1,128}$"
+              },
+              "version" : {
+                "description" : "(Optional) The version of the package to install or uninstall. If you don't specify a version, the system installs the latest published version by default. The system will only attempt to uninstall the version that is currently installed. If no version of the package is installed, the system returns an error.",
+                "type" : "String",
+                "default" : ""
+              },
+              "additionalArguments" : {
+                "description" : "(Optional) The additional parameters to provide to your install, uninstall, or update scripts.",
+                "type" : "StringMap",
+                "displayType" : "textarea",
+                "default" : { },
+                "maxChars" : 4096
+              },
+              "AutomationAssumeRole" : {
+                "type" : "String",
+                "description" : "The IAM role required to execute this document, by default use AWS-SystemsManager-AutomationAdministrationRole"
+              },
+              "bucketName" : {
+                "type" : "String",
+                "description" : "(Required) Specify the S3 bucket name where the package has been deployed to. This bucket should only consist of the packages and its manifest file"
+              },
+              "bucketPrefix" : {
+                "type" : "String",
+                "description" : "(Optional) Specify the S3 prefix (if used) where the package has been deployed to",
+                "default" : ""
+              },
+              "targets" : {
+                "type" : "MapList",
+                "default" : [ {
+                  "Key" : "${TargetKey}",
+                  "Values" : [ "${TargetValues}" ]
+                } ],
+                "description" : "(Optional) Specify the instances you want to target using Resource Groups, tags or all instances (default option). Refer https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_StartAutomationExecution.html for more details."
+              },
+              "targetAccounts" : {
+                "type" : "StringList"
+              },
+              "targetRegions" : {
+                "type" : "StringList"
+              },
+              "maxConcurrency" : {
+                "type" : "String",
+                "default" : "4"
+              },
+              "maxErrors" : {
+                "type" : "String",
+                "default" : "4"
+              }
+            },
+            "mainSteps" : [ {
+              "name" : "addPackageToDistributor",
+              "action" : "aws:executeScript",
+              "inputs" : {
+                "Runtime" : "python3.7",
+                "Handler" : "script_handler",
+                "Script" : "import sys\nimport boto3\nimport json\nimport botocore\nimport time\n\ndef script_handler(events, context):\n  s3 = boto3.client('s3')\n  org = boto3.client('organizations')\n  \n  executables = []\n  files=[]\n  accountList = []\n  bucketName = events['bucketName']\n  bucketPrefix = events['bucketPrefix']\n  package = events['name']\n  accountId = events['accountId']\n  region = events['region']\n  targetAccounts = events['targetAccounts']\n  targetRegions = events['targetRegions']\n  packageArns = []\n  \n  for tr in targetRegions:\n    ssm = boto3.client('ssm',region_name=tr)\n    \n    packageArns.append('arn:aws:ssm:'+tr+':'+accountId+':document/'+package)\n\n  \n    #(1) Get package manifest content\n    if not bucketPrefix:\n      manifestFile = 'manifest.json'\n    else:\n      manifestFile = bucketPrefix+'/manifest.json'\n    \n    fileObject = s3.get_object(\n        Bucket=bucketName,\n        Key=manifestFile\n      ) \n    \n    manifestContent = fileObject['Body'].read().decode('utf-8')\n    \n    \n    #(2) Get all the zip files that form part of the package\n    listResponse = s3.list_objects_v2(\n      Bucket=bucketName,\n      StartAfter=bucketPrefix\n    )\n    \n    if listResponse['Contents']:\n      for key in listResponse['Contents']:\n        name = next(iter((key.items())) )\n        \n        executableName = name[1].split('/')\n        for e in executableName:\n          files.append(e)\n    \n    executables = [k for k in files if 'zip' in k]\n    \n    #(3) Add the package to Distributor\n    try:\n      documentResponse = ssm.describe_document(\n        Name=package\n      )\n      \n      print(package+' already exists, moving to the document sharing step')\n      \n    except:\n      createResponse = ssm.create_document(\n        Content=manifestContent,\n        Attachments=[\n            {\n                'Key': 'SourceUrl',\n                'Values': [\n                    'https://s3.amazonaws.com/'+bucketName+'/'+bucketPrefix,\n                ]\n            },\n        ],\n        Name=package,\n        DocumentType='Package'\n      )\n    \n    \n    #(4) Share package with member accounts\n    documentResponse = ssm.describe_document(\n      Name=package\n    )\n    \n    if documentResponse:\n      for ta in targetAccounts:\n        try:\n          acc = int(ta)\n          accountList.append(str(acc))\n        except ValueError:\n          orgResponse = org.list_accounts_for_parent(\n            ParentId=ta\n          )\n          if orgResponse['Accounts']:\n            for accounts in orgResponse['Accounts']:\n              if accounts['Id']:\n                accountList.append(accounts['Id'])\n      \n      if accountList:\n        removeResponse = ssm.modify_document_permission(\n          Name=package,\n          PermissionType='Share',\n          AccountIdsToRemove=[\n              'all',\n          ]\n        )\n        \n        additionResponse = ssm.modify_document_permission(\n          Name=package,\n          PermissionType='Share',\n          AccountIdsToAdd=accountList\n        )\n        \n        if additionResponse['ResponseMetadata']:\n          if additionResponse['ResponseMetadata']['HTTPStatusCode'] == 200:\n            print(f'Successfully modified '+package+' permissions to be shared with these accounts: '+','.join(accountList))\n          else:\n            raise Exception(f'There was a problem modifying the permissions of '+package+', check the logs for more details')\n        else:\n          raise Exception(f'There seems to be a problem, check the logs for more details')\n    \n    else:\n      raise Exception(f'There seems to be a problem with '+package+', check the log for more details')",
+                "InputPayload" : {
+                  "bucketName" : "{{ bucketName }}",
+                  "bucketPrefix" : "{{ bucketPrefix }}",
+                  "name" : "{{ name }}",
+                  "region" : "{{global:REGION}}",
+                  "accountId" : "{{global:ACCOUNT_ID}}",
+                  "targetAccounts" : "{{ targetAccounts }}",
+                  "targetRegions" : "{{ targetRegions }}"
+                }
+              },
+              "description" : "This step will add the package that you have built and uploaded to S3 to AWS SSM Distributor. Refer to [Create a package](https://docs.aws.amazon.com/systems-manager/latest/userguide/distributor-working-with-packages-create.html#distributor-working-with-packages-create-adv) for more details. This step requires that you complete the first 3 steps including uploading the package and manifest file to a S3 bucket that this document will have access to.",
+              "nextStep" : "waitForPackageToBeAddedToDistibutor"
+            }, {
+              "name" : "waitForPackageToBeAddedToDistibutor",
+              "action" : "aws:waitForAwsResourceProperty",
+              "inputs" : {
+                "Service" : "ssm",
+                "Api" : "GetDocument",
+                "PropertySelector" : "Status",
+                "DesiredValues" : [ "Active" ],
+                "Name" : "{{ name }}"
+              }
+            }, {
+              "name" : "invokeCentralizedDistributorMemberDocument",
+              "action" : "aws:executeScript",
+              "inputs" : {
+                "Runtime" : "python3.7",
+                "Handler" : "script_handler",
+                "Script" : "import sys\nimport boto3\nimport json\nimport botocore\n\ndef script_handler(events, context):\n  client = boto3.client('ssm')\n  \n  automationAssumeRole = events['automationAssumeRole']\n  documentName = 'CSD-DistributeSoftwarePackage'\n  instanceId = events['instanceId']\n  action = events['action']\n  installationType = events['installationType']\n  version = events['version']\n  additionalArguments = events['additionalArguments']\n  targets = events['targets']\n  targetAccounts = events['targetAccounts']\n  targetRegions = events['targetRegions']\n  maxConcurrency = events['maxConcurrency']\n  maxErrors = events['maxErrors']\n  accountId = events['accountId']\n  package = events['package']\n  distributionDetails = {}\n  \n  distributionDetails['InstanceId'] = [instanceId]\n  distributionDetails['action'] = [action]\n  distributionDetails['installationType'] = [installationType]\n  distributionDetails['AutomationAssumeRole'] = [automationAssumeRole]\n  \n  if not version:\n    print('No version specified')\n  else:\n    distributionDetails['version'] = [version]\n    \n  if not additionalArguments:\n    print('No additional arguments specified')\n  else:\n    distributionDetails['additionalArguments'] = [additionalArguments]\n  \n  \n  for tr in targetRegions:\n    name = 'arn:aws:ssm:'+tr+':'+accountId+':document/'+package\n    distributionDetails['name'] = [name]\n    response = client.start_automation_execution(\n      DocumentName=documentName,\n      Parameters=distributionDetails,\n      TargetParameterName='InstanceId',\n      Targets=targets,\n      TargetLocations=[\n        {\n          'Accounts': targetAccounts,\n          'Regions': [tr],\n          'TargetLocationMaxConcurrency': maxConcurrency,\n          'TargetLocationMaxErrors': maxErrors\n        }]\n    )\n          \n    if response['AutomationExecutionId']:\n      status = 'Document has been successfuly invoked. Check AutomationExecutionId - ' + response['AutomationExecutionId'] + ' for more details'\n    else:\n      status = 'Document was not invoked'\n      raise Exception(f'It appears that this step couldn\\'t be completed due to an unknown error. Please check the logs for more details') \n  \n  return {'message': status}",
+                "InputPayload" : {
+                  "instanceId" : "{{ InstanceId }}",
+                  "action" : "{{ action }}",
+                  "installationType" : "{{installationType}}",
+                  "version" : "{{ version }}",
+                  "additionalArguments" : "{{ additionalArguments }}",
+                  "targets" : "{{ targets }}",
+                  "targetAccounts" : "{{ targetAccounts }}",
+                  "targetRegions" : "{{ targetRegions }}",
+                  "maxConcurrency" : "{{ maxConcurrency }}",
+                  "maxErrors" : "{{ maxErrors }}",
+                  "automationAssumeRole" : "{{ AutomationAssumeRole }}",
+                  "accountId" : "{{global:ACCOUNT_ID}}",
+                  "package" : "{{ name }}"
+                }
+              },
+              "isEnd" : true
+            } ]
+          }
+      DocumentType: "Automation"
+
+  CSDDistributeSoftwarePackage:
+    Type: "AWS::SSM::Document"
+    Properties:
+      Name: "CSD-DistributeSoftwarePackage"
+      Content: |
+          {
+            "description" : "This document will distribute the package to all the targeted member accounts",
+            "schemaVersion" : "0.3",
+            "assumeRole" : "{{ AutomationAssumeRole }}",
+            "parameters" : {
+              "action" : {
+                "description" : "(Required) Specify whether or not to install or uninstall the package.",
+                "type" : "String",
+                "allowedValues" : [ "Install", "Uninstall" ]
+              },
+              "installationType" : {
+                "description" : "(Optional) Specify the type of installation. Uninstall and reinstall: The application is taken offline until the reinstallation process completes. In-place update: The application is available while new or updated files are added to the installation.",
+                "type" : "String",
+                "allowedValues" : [ "Uninstall and reinstall", "In-place update" ],
+                "default" : "Uninstall and reinstall"
+              },
+              "name" : {
+                "description" : "(Required) The package to install/uninstall.",
+                "type" : "String",
+                "allowedPattern" : "^arn:[a-z0-9][-.a-z0-9]{0,62}:[a-z0-9][-.a-z0-9]{0,62}:([a-z0-9][-.a-z0-9]{0,62})?:([a-z0-9][-.a-z0-9]{0,62})?:(package|document)\\/[a-zA-Z0-9/:.\\-_]{1,128}$|^[a-zA-Z0-9/:.\\-_]{1,128}$"
+              },
+              "version" : {
+                "description" : "(Optional) The version of the package to install or uninstall. If you don't specify a version, the system installs the latest published version by default. The system will only attempt to uninstall the version that is currently installed. If no version of the package is installed, the system returns an error.",
+                "type" : "String",
+                "default" : ""
+              },
+              "additionalArguments" : {
+                "description" : "(Optional) The additional parameters to provide to your install, uninstall, or update scripts.",
+                "type" : "StringMap",
+                "displayType" : "textarea",
+                "default" : { },
+                "maxChars" : 4096
+              },
+              "AutomationAssumeRole" : {
+                "type" : "String",
+                "description" : "The IAM role required to execute this document "
+              },
+              "InstanceId" : {
+                "type" : "String",
+                "default" : "*"
+              }
+            },
+            "mainSteps" : [ {
+              "name" : "sendCommandToDistributePackage",
+              "action" : "aws:executeScript",
+              "inputs" : {
+                "Runtime" : "python3.7",
+                "Handler" : "script_handler",
+                "Script" : "import sys\nimport boto3\nimport json\nimport botocore\n\ndef script_handler(events, context):\n  client = boto3.client('ssm')\n  \n  instanceId = events['instanceId']\n  name = events['name']\n  action = events['action']\n  installationType = events['installationType']\n  version = events['version']\n  additionalArguments = events['additionalArguments']\n  packageConfigDetails = {}\n          \n  packageConfigDetails[\"name\"] = [name]\n  packageConfigDetails[\"action\"] = [action]\n  packageConfigDetails[\"installationType\"] = [installationType]\n  \n  if not version:\n    print('No version specified')\n  else:\n    packageConfigDetails[\"version\"] = [version]\n    \n  if not additionalArguments:\n    print('No additional arguments specified')\n  else:\n    packageConfigDetails[\"additionalArguments\"] = [additionalArguments]\n            \n  response = client.send_command(\n    InstanceIds=[\n            instanceId,\n        ],\n    DocumentName='AWS-ConfigureAWSPackage',\n    DocumentVersion='$DEFAULT',\n    Parameters=packageConfigDetails\n  )",
+                "InputPayload" : {
+                  "name" : "{{ name }}",
+                  "action" : "{{ action }}",
+                  "installationType" : "{{installationType}}",
+                  "version" : "{{ version }}",
+                  "additionalArguments" : "{{ additionalArguments }}",
+                  "instanceId" : "{{ InstanceId }}"
+                }
+              },
+              "isEnd" : true
+            } ]
+          }
+      DocumentType: "Automation"
+
+  AutomationAdministrationRole:
+    Type: "AWS::IAM::Role"
+    Condition: CreateSystemsManagerRoles
+    Properties:
+      Path: "/"
+      RoleName: "AWS-SystemsManager-AutomationAdministrationRole"
+      AssumeRolePolicyDocument: >-
+        {"Version":"2012-10-17","Statement":[{"Sid":"","Effect":"Allow","Principal":{"Service":"ssm.amazonaws.com"},"Action":"sts:AssumeRole"}]}
+      MaxSessionDuration: 3600
+      ManagedPolicyArns: 
+      - "arn:aws:iam::aws:policy/service-role/AmazonSSMAutomationRole"
+      Description: "AWS-SystemsManager-AutomationAdministrationRole"
+      Policies:
+        - PolicyName: AutomationAdministrationPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'resource-groups:ListGroupResources'
+                  - 'tag:GetResources'
+                  - 'ec2:DescribeInstances'
+                  - 'ec2:DescribeTags'
+                  - 'ec2messages:GetEndpoint'
+                  - 'ec2messages:FailMessage'
+                  - 'ec2messages:AcknowledgeMessage'
+                  - 'ec2messages:SendReply'
+                  - 'ec2messages:GetMessages'
+                  - 'organizations:ListAccountsForParent'
+                  - 's3:GetObject'
+                  - 's3:ListBucket'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'sts:AssumeRole'
+                Resource: !Sub 'arn:aws:iam::*:role/AWS-SystemsManager-AutomationExecutionRole'
+              - Effect: Allow
+                Action:
+                  - 'iam:PassRole'
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/AWS-SystemsManager-AutomationAdministrationRole'
+  
+  StackSetAdministrationRole:
+    Type: 'AWS::IAM::Role'
+    Condition: CreateCloudFormationStackSetRoles
+    Properties:
+      Path: /
+      RoleName: CSD-CloudFormation-StackSetAdministrationRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: AdministrationPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sts:AssumeRole
+                Resource:
+                  - "arn:*:iam::*:role/CSD-CloudFormation-StackSetExecutionRole"
+      Description: CSD-CloudFormation-StackSetAdministrationRole to enable use of CloudFormation Stacksets
+  
+  StackSetExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Condition: CreateCloudFormationStackSetRoles
+    Properties:
+      Path: /
+      RoleName: CSD-CloudFormation-StackSetExecutionRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !Sub "arn:aws:iam::${ManagementAccountId}:root"
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: ExecutionPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'cloudformation:*'
+                  - 'ssm:CreateDocument'
+                  - 'ssm:DescribeDocument'
+                  - 'ssm:DeleteDocument'
+                  - 'ssm:ListTagsForResource'
+                  - 'iam:CreateRole'
+                  - 'iam:GetRole'
+                  - 'iam:GetRolePolicy'
+                  - 'iam:PassRole'
+                  - 'iam:DetachRolePolicy'
+                  - 'iam:DeleteRolePolicy'
+                  - 'iam:DeleteRole'
+                  - 'iam:CreateRole'
+                  - 'iam:AttachRolePolicy'
+                  - 'iam:PutRolePolicy'
+                Resource: '*'
+      Description: CSD-CloudFormation-StackSetExecutionRole to enable use of CloudFormation Stacksets
+  
+  AutomationExecutionRoleStackSet:
+    Type: AWS::CloudFormation::StackSet
+    Condition: CreateSystemsManagerRoles
+    Properties:
+      AutoDeployment:
+        Enabled: true
+        RetainStacksOnAccountRemoval: false
+      StackSetName: AWS-SystemsManagerAutomationExecutionRole
+      Parameters:
+        - 
+          ParameterKey: ManagementAccountId
+          ParameterValue: !Ref ManagementAccountId
+      PermissionModel: SERVICE_MANAGED
+      Capabilities: 
+        - CAPABILITY_IAM
+        - CAPABILITY_NAMED_IAM
+      StackInstancesGroup:
+        - Regions: 
+          - us-east-1
+          DeploymentTargets:
+            OrganizationalUnitIds: !Ref DeploymentTargets 
+      TemplateBody: |
+        Parameters:
+          ManagementAccountId:
+            Description: (Required) AWS Organization Management account ID.
+            Type: String
+            Default: '123456789012'
+        Resources:
+          AutomationExecutionRole:
+            Type: 'AWS::IAM::Role'
+            Properties:
+              RoleName: AWS-SystemsManager-AutomationExecutionRole
+              AssumeRolePolicyDocument:
+                Version: 2012-10-17
+                Statement:
+                  - Effect: Allow
+                    Principal:
+                      AWS: !Ref ManagementAccountId
+                    Action:
+                      - 'sts:AssumeRole'
+                  - Effect: Allow
+                    Principal:
+                      Service: ssm.amazonaws.com
+                    Action:
+                      - 'sts:AssumeRole'
+              ManagedPolicyArns:
+                - 'arn:aws:iam::aws:policy/service-role/AmazonSSMAutomationRole'
+              Path: /
+              Policies:
+                - PolicyName: ExecutionPolicy
+                  PolicyDocument:
+                    Version: 2012-10-17
+                    Statement:
+                      - Effect: Allow
+                        Action:
+                          - 'resource-groups:ListGroupResources'
+                          - 'tag:GetResources'
+                          - 'ec2:DescribeInstances'
+                          - 'ec2:DescribeTags'
+                          - 'ec2messages:GetEndpoint'
+                          - 'ec2messages:FailMessage'
+                          - 'ec2messages:AcknowledgeMessage'
+                          - 'ec2messages:SendReply'
+                          - 'ec2messages:GetMessages'
+                        Resource: '*'
+                      - Effect: Allow
+                        Action:
+                          - 'iam:PassRole'
+                        Resource: !Sub >-
+                          arn:${AWS::Partition}:iam::${AWS::AccountId}:role/AWS-SystemsManager-AutomationExecutionRole
