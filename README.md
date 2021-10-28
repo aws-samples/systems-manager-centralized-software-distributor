@@ -32,8 +32,6 @@ Figure 1 shows the solution architecture. In addition to Distributor, the soluti
 ![](images/sol-arch.png)
 <p align="center">Figure 1: Solution Architecture</p>
 
-[ALT TEXT: Admin must upload installable assets (zip and manifest files) as a prerequisite. In step 1, the State Manager invokes the CSD\_AddSoftwarePackageToDistributor automation, which in step 2 adds a package to AWS Systems Manager Distributor. In step 3, the Distributor retrieves the package contents (installable assets and manifest files) from the S3 bucket. In step 4, Automation invokes the CSD-DistributeSoftwarePackage document. In step 5, Automation sends the command to Distributor along with the target instances. In step 6, Distributor deploys the software package to those instances.]
-
 # Walkthrough
 
 To deploy the solution, launch this CloudFormation stack in your organization&#39;s management account.
@@ -97,9 +95,6 @@ After the association has triggered the automation, open the Systems Manager con
 ![](images/automation-executions-mgt.png)
 <p align="center">Figure 2: Automation executions (management account))</p>
 
-
-[ALT TEXT: On the Executions tab, the Automation executions are displayed in a table organized by execution ID, document name, status, start time, end time, and executed by.]
-
 Click each execution to validate if they were completed successfully.
 
 Depending on the number of regions, accounts, and instances that you execute this solution against, a successful run of the execution looks like the following in the CSD-DistributeSoftwarePackage execution details:
@@ -107,24 +102,16 @@ Depending on the number of regions, accounts, and instances that you execute thi
 ![](images/csd-distributesoftwarepackage-execution-detail.png)
 <p align="center">Figure 3: CSD-DistributeSoftwarePackage execution detail (management account)</p>
 
-
-[ALT TEXT: On the Execution detail page for the CSD-DistributeSoftwarePackage, there are sections for execution description, outputs, status, and executed steps.]
-
 To ensure that the package was deployed to the targeted member account instances, navigate to the Systems Manager dashboard and select _Run Command_ in the left pane. Under _Command history_, you should be able to see every invocation and their status.
 
 ![](images/run-command-history.png)
 <p align="center">Figure 4: Run command history (member account)</p>
-
-
-[ALT TEXT: In the Command history tab for Run Command, there is a list of every command executed, along with their ID, status, requested date, document name, targets, error, and completed.]
 
 Click any **Command ID** , and then select the **instance ID** for the command output. Check the **Ouput** section for both steps. On a successful completion, you can expect a similar output as shown in Figure 5.
 
   ![](images/run-command-output.png)
 <p align="center">Figure 5: Run Command output (member account)</p>
 
-
-[ALT TEXT: In the Outputs section, there are two parts each providing a command description and status for both the steps, along with the specific output saying that the package was installed successfully.]
 
 ## Adding new accounts, OUs, and Regions
 
