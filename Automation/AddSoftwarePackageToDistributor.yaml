@@ -176,22 +176,28 @@ mainSteps:
                   ]
                 )
                 
-                additionResponse = ssm.modify_document_permission(
-                  Name=package,
-                  PermissionType='Share',
-                  AccountIdsToAdd=accountList
-                )
+                #To bypass ModifyDocumentPermission API's limit of 20 accounts - https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_ModifyDocumentPermission.html    
+                newAccounts = [accountList[x:x+20] for x in range(0, len(accountList), 20)]
+              
+                for newAccount in newAccounts:
+                  additionResponse = ssm.modify_document_permission(
+                    Name=package,
+                    PermissionType='Share',
+                    AccountIdsToAdd=newAccount
+                  )
                 
-                if additionResponse['ResponseMetadata']:
-                  if additionResponse['ResponseMetadata']['HTTPStatusCode'] == 200:
-                    print(f"Successfully modified "+package+" permissions to be shared with these accounts: "+','.join(accountList))
+                  if additionResponse['ResponseMetadata']:
+                    if additionResponse['ResponseMetadata']['HTTPStatusCode'] == 200:
+                      print(f'Successfully modified '+package+' permissions to be shared with these accounts: '+','.join(newAccount))
+                    else:
+                      raise Exception(f'There was a problem modifying the permissions of '+package+', check the logs for more details')
                   else:
-                    raise Exception(f"There was a problem modifying the permissions of "+package+", check the logs for more details")
-                else:
-                  raise Exception(f"There seems to be a problem, check the logs for more details")
-            
+                    raise Exception(f'There seems to be a problem, check the logs for more details')
+
+              else:
+                raise Exception(f"No accounts found in the management[parent] account")
             else:
-              raise Exception(f"There seems to be a problem with "+package+", check the log for more details")
+              raise Exception(f"Cannot find "+package+", check the log for more details")
             
           return {'message': packageArns}
       InputPayload:
