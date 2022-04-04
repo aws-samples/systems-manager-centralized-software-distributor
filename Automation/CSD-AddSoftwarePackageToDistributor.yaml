@@ -280,6 +280,7 @@ mainSteps:
               TargetLocations=[
                 {
                   'Accounts': targetAccounts,
+                  'ExecutionRoleName': 'CSD-SystemsManager-AutomationExecutionRole',
                   'Regions': [tr],
                   'TargetLocationMaxConcurrency': maxConcurrency,
                   'TargetLocationMaxErrors': maxErrors
