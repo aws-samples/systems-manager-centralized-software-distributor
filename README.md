@@ -118,7 +118,7 @@ The solution will automatically deploy to any new accounts that you provision un
 - **CloudFormation**:
     1. In the CloudFormation console, choose the original template you deployed, and then choose **Update**.
     2. Leave the **Use the current template** option selected.
-    3. Under **Automation details** ,update the **STACKSET\_**** TARGETS**
+    3. Under **Automation details** ,update the **STACKSET\_TARGETS**
 
 - **State Manager Association** :
 Update the association using the instructions provided in [Editing and creating a new version of an association](https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-state-assoc-edit.html) with the new accounts, OUs, and/or Regions.
