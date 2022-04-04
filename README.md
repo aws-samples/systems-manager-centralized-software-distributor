@@ -53,7 +53,7 @@ Provide the following inputs for the template:
 - **IsDelegatedAdminstrator:** Specify if the solution will use a delegated administrator account within the Organization to manage the software packages. CloudFormation StackSet IAM roles should be provisioned.
 - **DelegatedAdminAccountId:** (Optional) Delegated administrator account ID.
 - **ManagementAccountId:** (Required) AWS Organization&#39;s Management account ID.
-- **DeploymentTargets:** Specify the AWS OrganizationalUnitIds, for eg. ou-abc1-abc12ab1,ou-def2-def12de1 or the AWS account IDs that you want the solution to target. 
+- **DeploymentTargets:** Specify AWS account IDs and/or the organizational unit IDs within AWS Organization whose accounts have the target instances (e.g., ou-abcd-1qwert43, 123456789123) for distribution. 
 - **TargetKey:** Specify which instances have to be targeted for this solution. Allowed values - ParameterValues, ResourceGroup or begin with tag:, AWS::EC2::Instance, InstanceIds (default), instanceids. Refer to [Target](https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_Target.html) for more details.
 - **TargetValues:** Specify the target key values specified above. Default is \*, which targets every instance. Refer to [Target](https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_Target.html) for more details.
 
