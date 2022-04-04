@@ -11,13 +11,11 @@ The following prerequisites need to be completed Tto deploy this solution.
 1. Prepare your .zip files of installable assets, with one .zip file per operating system platform. At least one .zip file is required to create a package. Next,
 2. Create a JSON manifest. The manifest includes pointers to your package code files.
 3. When you have your required code files added to a folder or directory, and the manifest is populated with correct values, then upload your package to an Amazon Simple Storage Service (S3) bucket. These have been described in the first 3 steps of [Create a package (advanced)](https://docs.aws.amazon.com/systems-manager/latest/userguide/distributor-working-with-packages-create.html#distributor-working-with-packages-create-adv).
+4. This solution uses the management account within AWS Organizations, but you can also designate an account (delegated administrator) to manage this on behalf of the organization. If you intend to use a delegated account then you will need to register it as delegated administrator for CloudFormation stack set operations as described in [Register a delegated administrator] (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-delegated-admin.html).
 
 > **Note** : To ensure optimal package management, we recommend only having the
 > relevant files for a package uploaded in its own prefix within the S3 bucket 
-> that is utilized solely for this purpose. This post uses the management
-> account within AWS Organizations, but you can also designate an account to
-> manage this on behalf of the organization, for more details refer to
-> [Configuring a Delegated Administrator](https://docs.aws.amazon.com/systems-manager/latest/userguide/Explorer-setup-delegated-administrator.html).
+> that is utilized solely for this purpose.
 
 
 # Solution overview
@@ -45,19 +43,20 @@ The template deploys the following resources:
   - _CSD-DistributeSoftwarePackage_ which contains the logic to distribute the software package to every target instance in the member accounts.
 
 2. **IAM roles**
-  - [AWS-SystemsManager-AutomationAdministrationRole](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-automation-multiple-accounts-and-regions.html)
-  - [AWS-SystemsManager-AutomationExecutionRole](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-automation-multiple-accounts-and-regions.html)
+  - [CSD-SystemsManager-AutomationAdministrationRole](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-automation-multiple-accounts-and-regions.html)
+  - [CSD-SystemsManager-AutomationExecutionRole](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-automation-multiple-accounts-and-regions.html)
   - [CSD-CloudFormationStackSetAdministrationRole](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-prereqs.html)
   - [CSD-CloudFormationStackSetExecutionRole](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-prereqs.html)
 
 Provide the following inputs for the template:
 
-- **CreateCloudFormationStackSetRoles:** Specify if the CloudFormation StackSet IAM roles should be provisioned. These roles will be utilized to deploy AWS-SystemsManager-AutomationExecutionRole in each target account. Refer to [Prerequisites for stack set operations](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-prereqs.html) for more details.
-- **CreateSystemsManagerRoles:** Specify if the AWS Systems Manager IAM roles required to run automation in multiple accounts and regions should be provisioned. Refer to [Running automations in multiple AWS Regions and accounts](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-automation-multiple-accounts-and-regions.html) for more details.
+- **IsDelegatedAdminstrator:** Specify if the solution will use a delegated administrator account within the Organization to manage the software packages. CloudFormation StackSet IAM roles should be provisioned.
+- **DelegatedAdminAccountId:** (Optional) Delegated administrator account ID.
 - **ManagementAccountId:** (Required) AWS Organization&#39;s Management account ID.
+- **DeploymentTargets:** Specify the AWS OrganizationalUnitIds, for eg. ou-abc1-abc12ab1,ou-def2-def12de1 or the AWS account IDs that you want the solution to target. 
 - **TargetKey:** Specify which instances have to be targeted for this solution. Allowed values - ParameterValues, ResourceGroup or begin with tag:, AWS::EC2::Instance, InstanceIds (default), instanceids. Refer to [Target](https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_Target.html) for more details.
 - **TargetValues:** Specify the target key values specified above. Default is \*, which targets every instance. Refer to [Target](https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_Target.html) for more details.
-- **TargetOUs:** Organization Unit (OU) IDs which are in scope for this solution in a comma-separated format (e.g., ou-abc1-abc12ab1,ou-def2-def12de1).
+
 
 ## Invoking the solution using a State Manager association
 
@@ -75,7 +74,7 @@ Update the highlighted parameters, and then execute this command in the manageme
 - **ADDITIONAL\_ARGUMENTS:** The additional parameters to provide to your install, uninstall, or update scripts.
 - **S3\_BUCKET\_NAME:** Specify the S3 bucket name where the package has been deployed to. This bucket should only consist of the packages and its manifest file.
 - **S3\_BUCKET\_PREFIX:** Specify the S3 prefix (if used) where the package assets are stored.
-- **AUTOMATION\_ROLE\_ARN** : ARN of the AWS-SystemsManager-AutomationAdministrationRole.
+- **AUTOMATION\_ROLE\_ARN** : ARN of the CSD-SystemsManager-AutomationAdministrationRole.
 
 ```
 aws ssm create-association \
@@ -116,14 +115,12 @@ Click any **Command ID** , and then select the **instance ID** for the command o
 
 The solution will automatically deploy to any new accounts that you provision under the OUs specified when you originally deployed the CloudFormation template. The addition of new accounts or OUs will require updates to _both CloudFormation_ and _State Manager Association_ as described below. The addition of new regions will only require updating the _Association_.
 
-- **CloudFormation** (_complete these steps only if you provisioned the AWS-SystemsManager-Automation\* roles_):
-
+- **CloudFormation**:
     1. In the CloudFormation console, choose the original template you deployed, and then choose **Update**.
     2. Leave the **Use the current template** option selected.
     3. Under **Automation details** ,update the **STACKSET\_**** TARGETS**
 
 - **State Manager Association** :
-
 Update the association using the instructions provided in [Editing and creating a new version of an association](https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-state-assoc-edit.html) with the new accounts, OUs, and/or Regions.
 
 # Conclusion

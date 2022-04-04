@@ -31,7 +31,7 @@ parameters:
     maxChars: 4096
   AutomationAssumeRole:
     type: String
-    description: 'The IAM role required to execute this document '
+    description: 'The IAM role required to execute this document'
   InstanceId:
     type: String
     default: '*'

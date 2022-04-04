@@ -4,20 +4,21 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - 
-        Label:
-          default: 'IAM Roles'
-        Parameters:
-          - IsDelegatedAdministrator
-          - DeploymentTargets
-      - 
         Label: 
           default: 'Automation details'
-        Parameters: 
-          - ManagementAccountId
+        Parameters:
+          - IsDelegatedAdministrator
           - DelegatedAdminAccountId
+          - ManagementAccountId
+      - 
+        Label:
+          default: 'Targets'
+        Parameters:
+          - DeploymentTargets
           - TargetOUs
           - TargetKey
           - TargetValues
+
     ParameterLabels:
       IsDelegatedAdministrator:
         default: 'IsDelegatedAdministrator'
@@ -40,7 +41,7 @@ Parameters:
     - 'false'
     Description: Specify if this solution is being deployed in a delegated adminstrator account. With this option you no longer need to be logged into the AWS Organizations management account to administer software package distribution.
   DeploymentTargets:
-    Description: Specify the AWS OrganizationalUnitIds, for eg. ou-abc1-abc12ab1,ou-def2-def12de1
+    Description: Specify the AWS OrganizationalUnitIds and/or the AWS account IDs that you want the solution to target, for eg. ou-abc1-abc12ab1,123456789012
     Type: CommaDelimitedList
   TargetKey:
     Type: String

@@ -34,7 +34,7 @@ parameters:
     maxChars: 4096
   AutomationAssumeRole:
     type: String
-    description: The IAM role required to execute this document (select AWS-SystemsManager-AutomationAdministrationRole from the drop-down)
+    description: The IAM role required to execute this document (select CSD-SystemsManager-AutomationAdministrationRole from the drop-down)
   bucketName:
     type: String
     description: (Required) Specify the S3 bucket name where the package has been deployed to. This bucket should only consist of the packages and its manifest file
