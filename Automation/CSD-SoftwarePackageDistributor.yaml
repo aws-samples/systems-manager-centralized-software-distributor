@@ -58,28 +58,48 @@ mainSteps:
           additionalArguments = events['additionalArguments']
           packageConfigDetails = {}
                   
-          packageConfigDetails["name"] = [name]
-          packageConfigDetails["action"] = [action]
-          packageConfigDetails["installationType"] = [installationType]
+          packageConfigDetails['name'] = [name]
+          packageConfigDetails['action'] = [action]
+          packageConfigDetails['installationType'] = [installationType]
           
           if not version:
             print('No version specified')
           else:
-            packageConfigDetails["version"] = [version]
+            packageConfigDetails['version'] = [version]
             
           if not additionalArguments:
             print('No additional arguments specified')
           else:
-            packageConfigDetails["additionalArguments"] = [additionalArguments]
+            packageConfigDetails['additionalArguments'] = [additionalArguments]
                     
-          response = client.send_command(
-            InstanceIds=[
-                    instanceId,
-                ],
-            DocumentName='AWS-ConfigureAWSPackage',
-            DocumentVersion='$DEFAULT',
-            Parameters=packageConfigDetails
+          ec2_response = client.describe_instance_information(
+            Filters=[
+                {
+                    'Key': 'InstanceIds',
+                    'Values': [
+                        instanceId,
+                    ]
+                },
+            ]
           )
+          
+          if ec2_response['InstanceInformationList']:
+            ssm_pingstatus = ec2_response['InstanceInformationList'][0]['PingStatus']
+            if ssm_pingstatus == 'Online':
+              print(instanceId+' is eligible for this automation execution. Configuring package now...')
+              response = client.send_command(
+                InstanceIds=[
+                        instanceId,
+                    ],
+                DocumentName='AWS-ConfigureAWSPackage',
+                DocumentVersion='$DEFAULT',
+                Parameters=packageConfigDetails
+              )
+            else:
+              raise Exception(f'{instanceId} currently appears to be {ssm_pingstatus}')
+          else:
+            raise Exception(f'{instanceId} currently appears to be unavailable for this automation'
+
       InputPayload:
         name: '{{ name }}'
         action: '{{ action }}'
