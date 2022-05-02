@@ -98,7 +98,7 @@ mainSteps:
             else:
               raise Exception(f'{instanceId} currently appears to be {ssm_pingstatus}')
           else:
-            raise Exception(f'{instanceId} currently appears to be unavailable for this automation'
+            raise Exception(f'{instanceId} currently appears to be unavailable for this automation')
 
       InputPayload:
         name: '{{ name }}'
