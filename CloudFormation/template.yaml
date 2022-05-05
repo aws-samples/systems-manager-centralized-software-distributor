@@ -122,13 +122,15 @@ Resources:
                 "description" : "(Optional) Specify the S3 prefix (if used) where the package has been deployed to",
                 "default" : ""
               },
-              "targets" : {
-                "type" : "MapList",
-                "default" : [ {
-                  "Key" : "${TargetKey}",
-                  "Values" : [ "${TargetValues}" ]
-                } ],
+              "targetKey" : {
+                "type" : "String",
+                "default" : "InstanceIds",
                 "description" : "(Optional) Specify the instances you want to target using Resource Groups, tags or all instances (default option). Refer https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_StartAutomationExecution.html for more details."
+              },
+              "targetValues" : {
+                "type" : "String",
+                "default" : "*",
+                "description" : "(Optional) Specify the instances you want to target using Resource Groups, tags (use tag: format) or all instances (default option). Refer https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_StartAutomationExecution.html for more details."
               },
               "targetAccounts" : {
                 "type" : "StringList"
