@@ -42,12 +42,12 @@ parameters:
     type: String
     description: (Optional) Specify the S3 prefix (if used) where the package assets are stored
     default: ''
-  targets:
-    type: MapList
-    default:
-      - Key: InstanceIds
-        Values:
-          - '*'
+  targetKey:
+    type: String
+    default: 'InstanceIds'
+  targetValues:
+    type: String
+    default: '*'
     description: '(Optional) Specify the instances you want to target using Resource Groups, tags or all instances (default option). Refer https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_StartAutomationExecution.html for more details.'
   targetAccounts:
     type: StringList
@@ -238,13 +238,14 @@ mainSteps:
           client = boto3.client('ssm')
           
           automationAssumeRole = events['automationAssumeRole']
-          documentName = 'SoftwarePackageDistributor'
+          documentName = 'CSD-DistributeSoftwarePackage'
           instanceId = events['instanceId']
           action = events['action']
           installationType = events['installationType']
           version = events['version']
           additionalArguments = events['additionalArguments']
-          targets = events['targets']
+          targetKey = events['targetKey']
+          targetValues = events['targetValues']
           targetAccounts = events['targetAccounts']
           targetRegions = events['targetRegions']
           maxConcurrency = events['maxConcurrency']
@@ -276,7 +277,14 @@ mainSteps:
               DocumentName=documentName,
               Parameters=distributionDetails,
               TargetParameterName='InstanceId',
-              Targets=targets,
+              Targets=[
+                {
+                    'Key': targetKey,
+                    'Values': [
+                        targetValues
+                    ]
+                }
+              ],
               TargetLocations=[
                 {
                   'Accounts': targetAccounts,
@@ -300,7 +308,8 @@ mainSteps:
         installationType: '{{installationType}}'
         version: '{{ version }}'
         additionalArguments: '{{ additionalArguments }}'
-        targets: '{{ targets }}'
+        targetKey: '{{ targetKey }}'
+        targetValues: '{{ targetValues }}'
         targetAccounts: '{{ targetAccounts }}'
         targetRegions: '{{ targetRegions }}'
         maxConcurrency: '{{ maxConcurrency }}'
