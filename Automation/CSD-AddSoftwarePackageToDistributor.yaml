@@ -156,8 +156,8 @@ mainSteps:
             if documentResponse:
               for ta in targetAccounts:
                 try:
-                  acc = int(ta)
-                  accountList.append(str(acc))
+                  acc = str(ta)
+                  accountList.append(acc)
                 except ValueError:
                   orgResponse = org.list_accounts_for_parent(
                     ParentId=ta
