@@ -61,10 +61,10 @@ Parameters:
     Default: '123456789012'
 
 Conditions:
-  IsDelegatedAdministrator:
-    Fn::Equals:
-    - Ref: IsDelegatedAdministrator
-    - 'true'
+  IsDelegatedAdministrator: 
+    !Equals [!Ref IsDelegatedAdministrator,'true']
+  IsGovCloud: 
+    !Or [!Equals [!Ref AWS::Region, us-gov-west-1], !Equals [!Ref AWS::Region, us-gov-east-1]]
 
 Resources:
   CSDAddSoftwarePackageToDistributor:
@@ -281,7 +281,7 @@ Resources:
       AssumeRolePolicyDocument: >-
         {"Version":"2012-10-17","Statement":[{"Sid":"","Effect":"Allow","Principal":{"Service":"ssm.amazonaws.com"},"Action":"sts:AssumeRole"}]}
       MaxSessionDuration: 3600
-      ManagedPolicyArns: 
+      ManagedPolicyArns:
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonSSMAutomationRole'
       Description: "CSD-SystemsManager-AutomationAdministrationRole"
       Policies:
@@ -395,7 +395,7 @@ Resources:
         - CAPABILITY_NAMED_IAM
       StackInstancesGroup:
         - Regions: 
-          - us-east-1
+          - !If [IsGovCloud, us-gov-west-1, us-east-1]
           DeploymentTargets:
             OrganizationalUnitIds: !Ref DeploymentTargets 
       TemplateBody: |
