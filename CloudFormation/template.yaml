@@ -307,7 +307,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - 'sts:AssumeRole'
-                Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CSD-SystemsManager-AutomationExecutionRole'
+                Resource: !Sub 'arn:${AWS::Partition}:iam::*:role/CSD-SystemsManager-AutomationExecutionRole'
               - Effect: Allow
                 Action:
                   - 'iam:PassRole'
