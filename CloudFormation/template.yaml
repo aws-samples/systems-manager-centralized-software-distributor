@@ -41,7 +41,7 @@ Parameters:
     - 'false'
     Description: Specify if this solution is being deployed in a delegated adminstrator account. With this option you no longer need to be logged into the AWS Organizations management account to administer software package distribution.
   DeploymentTargets:
-    Description: Specify AWS account IDs and/or the organizational unit IDs within AWS Organization whose accounts have the target instances (e.g., ou-abcd-1qwert43, 123456789123) for distribution
+    Description: Specify AWS account IDs and/or the organizational unit IDs within AWS Organization whose accounts have the target instances (e.g., ou-abcd-1qwert43, 123456789123) for distribution. (Account IDs are only allowed when updating, when first running this stack use OU IDs)
     Type: CommaDelimitedList
   TargetKey:
     Type: String
