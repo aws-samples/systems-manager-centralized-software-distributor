@@ -78,7 +78,6 @@ mainSteps:
           
           executables = []
           files=[]
-          accountList = []
           bucketName = events['bucketName']
           bucketPrefix = events['bucketPrefix']
           package = events['name']
@@ -89,10 +88,10 @@ mainSteps:
           packageArns = []
           
           for tr in targetRegions:
+            accountList = []
             ssm = boto3.client('ssm',region_name=tr)
             
             packageArns.append('arn:aws:ssm:'+tr+':'+accountId+':document/'+package)
-
           
             #(1) Get package manifest content
             if not bucketPrefix:
@@ -149,23 +148,27 @@ mainSteps:
             
             
             #(4) Share package with member accounts
+            accounts_paginator = org.get_paginator('list_accounts_for_parent')
+            ou_paginator = org.get_paginator('list_organizational_units_for_parent')
+            
             documentResponse = ssm.describe_document(
               Name=package
             )
             
             if documentResponse:
               for ta in targetAccounts:
-                try:
+                if ta.isdigit():
                   acc = str(ta)
                   accountList.append(acc)
-                except ValueError:
-                  orgResponse = org.list_accounts_for_parent(
-                    ParentId=ta
-                  )
-                  if orgResponse['Accounts']:
-                    for accounts in orgResponse['Accounts']:
-                      if accounts['Id']:
-                        accountList.append(accounts['Id'])
+                else:
+                  for page in accounts_paginator.paginate(ParentId=ta):
+                    for accounts in page['Accounts']:
+                      accountList.append(accounts['Id'])
+                  for page in ou_paginator.paginate(ParentId=ta):
+                    for ou in page['OrganizationalUnits']:
+                      for child_ou in accounts_paginator.paginate(ParentId=ou['Id']):
+                        for accounts in child_ou['Accounts']:
+                          accountList.append(accounts['Id'])
               
               if accountList:
                 removeResponse = ssm.modify_document_permission(
