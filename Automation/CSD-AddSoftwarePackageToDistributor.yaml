@@ -171,6 +171,7 @@ mainSteps:
                           accountList.append(accounts['Id'])
               
               if accountList:
+                print(len(accountList))
                 removeResponse = ssm.modify_document_permission(
                   Name=package,
                   PermissionType='Share',
@@ -191,7 +192,8 @@ mainSteps:
                 
                   if additionResponse['ResponseMetadata']:
                     if additionResponse['ResponseMetadata']['HTTPStatusCode'] == 200:
-                      print(f'Successfully modified '+package+' permissions to be shared with these accounts: '+','.join(newAccount))
+                      #print(f'Successfully modified '+package+' permissions to be shared with these accounts: '+','.join(newAccount))
+                      print(f'Successfully modified '+package+' permissions to be shared with '+','.join(str(len(newAccount)))+' accounts')
                     else:
                       raise Exception(f'There was a problem modifying the permissions of '+package+', check the logs for more details')
                   else:
