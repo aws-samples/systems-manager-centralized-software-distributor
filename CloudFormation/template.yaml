@@ -301,6 +301,7 @@ Resources:
                   - 'ec2messages:SendReply'
                   - 'ec2messages:GetMessages'
                   - 'organizations:ListAccountsForParent'
+                  - 'organizations:ListOrganizationalUnitsForParent'
                   - 's3:GetObject'
                   - 's3:ListBucket'
                 Resource: '*'
