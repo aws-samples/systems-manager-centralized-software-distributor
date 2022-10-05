@@ -193,17 +193,18 @@ mainSteps:
                   if additionResponse['ResponseMetadata']:
                     if additionResponse['ResponseMetadata']['HTTPStatusCode'] == 200:
                       #print(f'Successfully modified '+package+' permissions to be shared with these accounts: '+','.join(newAccount))
-                      print(f'Successfully modified '+package+' permissions to be shared with '+str(len(newAccount))+' accounts')
+                      print(f'Successfully modified '+package+' permissions')
                     else:
                       raise Exception(f'There was a problem modifying the permissions of '+package+', check the logs for more details')
                   else:
                     raise Exception(f'There seems to be a problem, check the logs for more details')
 
-              else:
+              else:x
                 raise Exception(f"No accounts found in the management[parent] account")
             else:
               raise Exception(f"Cannot find "+package+", check the log for more details")
             
+            print(package+' has been shared with a total of '+str(len(accountList))+' accounts')
           return {'message': packageArns}
       InputPayload:
         bucketName: '{{ bucketName }}'
