@@ -70,7 +70,7 @@ Update the highlighted parameters, and then execute this command in the manageme
 - **ACTION:** Specify whether or not to install or uninstall the package.
 - **INSTALLATION\_TYPE:** Specify the installation type. Uninstall and reinstall: The application is taken offline until the reinstallation process completes. In-place update: The application is available while new or updated files are added to the installation.
 - **PACKAGE\_NAME:** The package to install/uninstall.
-- **VERSION:** The package version to install or uninstall. If you don&#39;&#39;t specify a version, then by default the system installs the latest published version. The system will only attempt to uninstall the version currently installed. If no version of the package is installed, then the system returns an error.
+- **VERSION:** The package version to install or uninstall. If you don&#39;t specify a version, then by default the system installs the latest published version. The system will only attempt to uninstall the version currently installed. If no version of the package is installed, then the system returns an error.
 - **ADDITIONAL\_ARGUMENTS:** The additional parameters to provide to your install, uninstall, or update scripts.
 - **S3\_BUCKET\_NAME:** Specify the S3 bucket name where the package has been deployed to. This bucket should only consist of the packages and its manifest file.
 - **S3\_BUCKET\_PREFIX:** Specify the S3 prefix (if used) where the package assets are stored.
@@ -79,7 +79,7 @@ Update the highlighted parameters, and then execute this command in the manageme
 ```
 aws ssm create-association \
     --association-name "csd-association" \
-    --name " CSD-AddSoftwarePackageToDistributor" \
+    --name "CSD-AddSoftwarePackageToDistributor" \
     --parameters '{"targetAccounts":["TARGET_ACCOUNTS"],"targetRegions":["TARGET_REGIONS"],"maxConcurrency":["MAX_CONCURRENCY"],"maxErrors":["MAX_ERRORS"],"action":["ACTION"],"installationType":["INSTALLATION_TYPE"],"name":["PACKAGE_NAME"],"version":["VERSION"],"additionalArguments":["{ADDITIONAL_ARGUMENTS}"],"AutomationAssumeRole":["AUTOMATION_ROLE_ARN"],"bucketName":["S3_BUCKET_NAME"],"bucketPrefix":["S3_BUCKET_PREFIX"]}' \
     --no-apply-only-at-cron-interval
 ```
