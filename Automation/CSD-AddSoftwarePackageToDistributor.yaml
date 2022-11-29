@@ -199,7 +199,7 @@ mainSteps:
                   else:
                     raise Exception(f'There seems to be a problem, check the logs for more details')
 
-              else:x
+              else:
                 raise Exception(f"No accounts found in the management[parent] account")
             else:
               raise Exception(f"Cannot find "+package+", check the log for more details")
