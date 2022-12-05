@@ -23,7 +23,7 @@ parameters:
     type: String
     allowedPattern: '^arn:[a-z0-9][-.a-z0-9]{0,62}:[a-z0-9][-.a-z0-9]{0,62}:([a-z0-9][-.a-z0-9]{0,62})?:([a-z0-9][-.a-z0-9]{0,62})?:(package|document)\/[a-zA-Z0-9/:.\-_]{1,128}$|^[a-zA-Z0-9/:.\-_]{1,128}$'
   version:
-    description: '(Optional) The version of the package to install or uninstall. If you don''t specify a version, the system installs the latest published version by default. The system will only attempt to uninstall the version that is currently installed. If no version of the package is installed, the system returns an error.'
+    description: '(Required) The version of the package to install or uninstall. If you don't specify a version, the system installs the latest published version by default. The system will only attempt to uninstall the version that is currently installed. If no version of the package is installed, the system returns an error.'
     type: String
     default: ''
   additionalArguments:
@@ -81,6 +81,7 @@ mainSteps:
           bucketName = events['bucketName']
           bucketPrefix = events['bucketPrefix']
           package = events['name']
+          version = events['version']
           accountId = events['accountId']
           region = events['region']
           targetAccounts = events['targetAccounts']
@@ -126,10 +127,33 @@ mainSteps:
             #(3) Add the package to Distributor
             try:
               documentResponse = ssm.describe_document(
-                Name=package
+                        Name=package
+                      )
+                      
+              print(package+' already exists, creating a new version')
+              
+              update_response = ssm.update_document(
+                Content=manifestContent,
+                Attachments=[
+                    {
+                        'Key': 'SourceUrl',
+                        'Values': [
+                            'https://s3.amazonaws.com/'+bucketName+'/'+bucketPrefix,
+                        ]
+                    },
+                ],
+                Name=package,
+                VersionName=version,
+                DocumentVersion='$LATEST'
               )
               
-              print(package+' already exists, moving to the document sharing step')
+              print('Setting ' + version + ' as the default version\n')
+              
+              
+              update_document_default_version_response = ssm.update_document_default_version(
+                Name=package,
+                DocumentVersion=update_response['DocumentDescription']['DocumentVersion']
+              )
               
             except:
               createResponse = ssm.create_document(
@@ -143,6 +167,7 @@ mainSteps:
                     },
                 ],
                 Name=package,
+                VersionName=version,
                 DocumentType='Package'
               )
             
@@ -171,7 +196,6 @@ mainSteps:
                           accountList.append(accounts['Id'])
               
               if accountList:
-                print(len(accountList))
                 removeResponse = ssm.modify_document_permission(
                   Name=package,
                   PermissionType='Share',
@@ -192,19 +216,18 @@ mainSteps:
                 
                   if additionResponse['ResponseMetadata']:
                     if additionResponse['ResponseMetadata']['HTTPStatusCode'] == 200:
-                      #print(f'Successfully modified '+package+' permissions to be shared with these accounts: '+','.join(newAccount))
-                      print(f'Successfully modified '+package+' permissions')
+                      print(f'Successfully modified '+package+' permissions\n')
                     else:
-                      raise Exception(f'There was a problem modifying the permissions of '+package+', check the logs for more details')
+                      raise Exception(f'There was a problem modifying the permissions of '+package+', check the logs for more details\n')
                   else:
-                    raise Exception(f'There seems to be a problem, check the logs for more details')
+                    raise Exception(f'There seems to be a problem, check the logs for more details\n')
 
               else:
                 raise Exception(f"No accounts found in the management[parent] account")
             else:
               raise Exception(f"Cannot find "+package+", check the log for more details")
             
-            print(package+' has been shared with a total of '+str(len(accountList))+' accounts')
+            print(package+' has been shared with a total of '+str(len(accountList))+' accounts in ' + tr +'\n')
           return {'message': packageArns}
       InputPayload:
         bucketName: '{{ bucketName }}'
