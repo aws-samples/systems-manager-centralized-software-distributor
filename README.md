@@ -65,12 +65,12 @@ A [State Manager association](https://docs.aws.amazon.com/systems-manager/latest
 Update the highlighted parameters, and then execute this command in the management account of your organization.
 
 - **TARGET\_ACCOUNTS** : AWS account IDs and/or the organizational unit IDs within AWS Organization whose accounts have the target instances (e.g., ou-abcd-1qwert43, 123456789123) for distribution.
-- **TARGTE\_REGIONS** : All AWS Regions (e.g., us-east-1) where the target instances are running.
+- **TARGET\_REGIONS** : All AWS Regions (e.g., us-east-1) where the target instances are running.
 - **MAX\_CONCURRENCY** and **MAX\_ERRORS:** Specifythese values based on the number of accounts and error thresholds described in [TargetLocation](https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_TargetLocation.html) in the AWS Systems Manager API Reference.
 - **ACTION:** Specify whether or not to install or uninstall the package.
 - **INSTALLATION\_TYPE:** Specify the installation type. Uninstall and reinstall: The application is taken offline until the reinstallation process completes. In-place update: The application is available while new or updated files are added to the installation.
 - **PACKAGE\_NAME:** The package to install/uninstall.
-- **VERSION:** The package version to install or uninstall. If you don&#39;t specify a version, then by default the system installs the latest published version. The system will only attempt to uninstall the version currently installed. If no version of the package is installed, then the system returns an error.
+- **VERSION:** The package version to install or uninstall. The system will only attempt to uninstall the version currently installed. If no version of the package is installed, then the system returns an error.
 - **ADDITIONAL\_ARGUMENTS:** The additional parameters to provide to your install, uninstall, or update scripts.
 - **S3\_BUCKET\_NAME:** Specify the S3 bucket name where the package has been deployed to. This bucket should only consist of the packages and its manifest file.
 - **S3\_BUCKET\_PREFIX:** Specify the S3 prefix (if used) where the package assets are stored.
@@ -109,6 +109,13 @@ Click any **Command ID** , and then select the **instance ID** for the command o
 
   ![](images/run-command-output.png)
 <p align="center">Figure 5: Run Command output (member account)</p>
+
+
+## Adding a package version
+
+To add a package version:
+  1. Upload the modified package along with the new manifest file to the same S3 bucket under the designated prefix where the previous package assets where stored.
+  2. Update the current association with the new version using [update-association](https://docs.aws.amazon.com/cli/latest/reference/ssm/update-association.html). Ensure that you provide the **same version** that was specified in the *manifest.json* to the association.
 
 
 ## Adding new accounts, OUs, and Regions
