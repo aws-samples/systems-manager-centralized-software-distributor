@@ -126,37 +126,7 @@ mainSteps:
             
             #(3) Add the package to Distributor
             try:
-              documentResponse = ssm.describe_document(
-                        Name=package
-                      )
-                      
-              print(package+' already exists, creating a new version')
-              
-              update_response = ssm.update_document(
-                Content=manifestContent,
-                Attachments=[
-                    {
-                        'Key': 'SourceUrl',
-                        'Values': [
-                            'https://s3.amazonaws.com/'+bucketName+'/'+bucketPrefix,
-                        ]
-                    },
-                ],
-                Name=package,
-                VersionName=version,
-                DocumentVersion='$LATEST'
-              )
-              
-              print('Setting ' + version + ' as the default version\n')
-              
-              
-              update_document_default_version_response = ssm.update_document_default_version(
-                Name=package,
-                DocumentVersion=update_response['DocumentDescription']['DocumentVersion']
-              )
-              
-            except:
-              createResponse = ssm.create_document(
+							createResponse = ssm.create_document(
                 Content=manifestContent,
                 Attachments=[
                     {
@@ -170,6 +140,40 @@ mainSteps:
                 VersionName=version,
                 DocumentType='Package'
               )
+          
+            except:
+							documentResponse = ssm.describe_document(
+                        Name=package
+                      )
+
+							if documentResponse['Document']['VersionName'] == version:
+            		print('Document to be updated with name '+ package +' has the same metadata and content as document version provided in request. Proceeding to sharing package with member accounts.')
+        
+        			else:        
+								print(package+' already exists, creating a new version')
+								
+								update_response = ssm.update_document(
+									Content=manifestContent,
+									Attachments=[
+											{
+													'Key': 'SourceUrl',
+													'Values': [
+															'https://s3.amazonaws.com/'+bucketName+'/'+bucketPrefix,
+													]
+											},
+									],
+									Name=package,
+									VersionName=version,
+									DocumentVersion='$LATEST'
+								)
+								
+								print('Setting ' + version + ' as the default version\n')
+								
+								
+								update_document_default_version_response = ssm.update_document_default_version(
+									Name=package,
+									DocumentVersion=update_response['DocumentDescription']['DocumentVersion']
+								)
             
             
             #(4) Share package with member accounts
