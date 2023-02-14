@@ -34,7 +34,7 @@ Figure 1 shows the solution architecture. In addition to Distributor, the soluti
 
 To deploy the solution, launch this CloudFormation stack in your organization&#39;s management account.
 
-[![cfn-stack](images/cfn-stack.png)](https://bhatprav-blog-artefacts.s3.ap-southeast-2.amazonaws.com/centralized-software-distributor/CloudFormation/template.yaml)
+[![cfn-stack](images/cfn-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=ap-southeast-2#/stacks/new?stackName=CentralizedSoftwareDistributor&templateURL=https://pb-solution-artifacts.s3.ap-southeast-2.amazonaws.com/centralized-software-distributor/CloudFormation/template.yaml)
 
 The template deploys the following resources:
 
