@@ -232,7 +232,7 @@ mainSteps:
               raise Exception(f"Cannot find "+package+", check the log for more details")
             
             print(package+' has been shared with a total of '+str(len(accountList))+' accounts in ' + tr +'\n')
-          return {'message': packageArns}
+          return {'packageArns': packageArns, 'fullTargetAccountList': accountList}
       InputPayload:
         bucketName: '{{ bucketName }}'
         bucketPrefix: '{{ bucketPrefix }}'
@@ -246,7 +246,10 @@ mainSteps:
     nextStep: waitForPackageToBeAddedToDistibutor
     outputs:
       - Name: packageArns
-        Selector: $.Payload.message
+        Selector: $.Payload.packageArns
+        Type: StringList
+      - Name: fullTargetAccountList
+        Selector: $.Payload.fullTargetAccountList
         Type: StringList
   - name: waitForPackageToBeAddedToDistibutor
     action: 'aws:waitForAwsResourceProperty'
@@ -344,7 +347,7 @@ mainSteps:
         additionalArguments: '{{ additionalArguments }}'
         targetKey: '{{ targetKey }}'
         targetValues: '{{ targetValues }}'
-        targetAccounts: '{{ targetAccounts }}'
+        targetAccounts: '{{ addPackageToDistributor.fullTargetAccountList }}'
         targetRegions: '{{ targetRegions }}'
         maxConcurrency: '{{ maxConcurrency }}'
         maxErrors: '{{ maxErrors }}'
