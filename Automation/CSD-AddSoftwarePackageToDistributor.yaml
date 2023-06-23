@@ -307,36 +307,40 @@ mainSteps:
             distributionDetails["additionalArguments"] = [additionalArguments]
           
           
-          for tr in targetRegions:
-            name = 'arn:aws:ssm:'+tr+':'+accountId+':document/'+package
-            distributionDetails["name"] = [name]
-            response = client.start_automation_execution(
-              DocumentName=documentName,
-              Parameters=distributionDetails,
-              TargetParameterName='InstanceId',
-              Targets=[
-                {
-                    'Key': targetKey,
-                    'Values': [
-                        targetValues
-                    ]
-                }
-              ],
-              TargetLocations=[
-                {
-                  'Accounts': targetAccounts,
-                  'ExecutionRoleName': 'CSD-SystemsManager-AutomationExecutionRole',
-                  'Regions': [tr],
-                  'TargetLocationMaxConcurrency': maxConcurrency,
-                  'TargetLocationMaxErrors': maxErrors
-                }]
-            )
-                  
-            if response["AutomationExecutionId"]:
-              status = "Document has been successfuly invoked. Check AutomationExecutionId - " + response["AutomationExecutionId"] + " for more details"
-            else:
-              status = "Document was not invoked"
-              raise Exception(f"It appears that this step couldn\'t be completed due to an unknown error. Please check the logs for more details") 
+          #Workaround: TargetLocation has a limit of 50 accounts - https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_TargetLocation.html    
+          targetAccountList = [targetAccounts[x:x+50] for x in range(0, len(targetAccounts), 50)]
+              
+          for accounts in targetAccountList:     
+            for tr in targetRegions:
+              name = 'arn:aws:ssm:'+tr+':'+accountId+':document/'+package
+              distributionDetails["name"] = [name]
+              response = client.start_automation_execution(
+                DocumentName=documentName,
+                Parameters=distributionDetails,
+                TargetParameterName='InstanceId',
+                Targets=[
+                  {
+                      'Key': targetKey,
+                      'Values': [
+                          targetValues
+                      ]
+                  }
+                ],
+                TargetLocations=[
+                  {
+                    'Accounts': accounts,
+                    'ExecutionRoleName': 'CSD-SystemsManager-AutomationExecutionRole',
+                    'Regions': [tr],
+                    'TargetLocationMaxConcurrency': maxConcurrency,
+                    'TargetLocationMaxErrors': maxErrors
+                  }]
+              )
+                    
+              if response["AutomationExecutionId"]:
+                status = "Document has been successfuly invoked. Check AutomationExecutionId - " + response["AutomationExecutionId"] + " for more details"
+              else:
+                status = "Document was not invoked"
+                raise Exception(f"It appears that this step couldn\'t be completed due to an unknown error. Please check the logs for more details") 
           
           return {'message': status}
       InputPayload:
