@@ -232,7 +232,7 @@ mainSteps:
               raise Exception(f"Cannot find "+package+", check the log for more details")
             
             print(package+' has been shared with a total of '+str(len(accountList))+' accounts in ' + tr +'\n')
-          return {'packageArns': packageArns, 'fullTargetAccountList': accountList}
+          return {'packageArns': packageArns}
       InputPayload:
         bucketName: '{{ bucketName }}'
         bucketPrefix: '{{ bucketPrefix }}'
@@ -247,9 +247,6 @@ mainSteps:
     outputs:
       - Name: packageArns
         Selector: $.Payload.packageArns
-        Type: StringList
-      - Name: fullTargetAccountList
-        Selector: $.Payload.fullTargetAccountList
         Type: StringList
   - name: waitForPackageToBeAddedToDistibutor
     action: 'aws:waitForAwsResourceProperty'
@@ -273,6 +270,7 @@ mainSteps:
 
         def script_handler(events, context):
           client = boto3.client('ssm')
+          org = boto3.client('organizations')
           
           automationAssumeRole = events['automationAssumeRole']
           documentName = 'CSD-DistributeSoftwarePackage'
@@ -290,11 +288,15 @@ mainSteps:
           accountId = events['accountId']
           package = events['package']
           distributionDetails = {}
+          accountList = []
           
           distributionDetails["InstanceId"] = [instanceId]
           distributionDetails["action"] = [action]
           distributionDetails["installationType"] = [installationType]
           distributionDetails["AutomationAssumeRole"] = [automationAssumeRole]
+          
+          accounts_paginator = org.get_paginator('list_accounts_for_parent')
+          ou_paginator = org.get_paginator('list_organizational_units_for_parent')
           
           if not version:
             print('No version specified')
@@ -306,9 +308,23 @@ mainSteps:
           else:
             distributionDetails["additionalArguments"] = [additionalArguments]
           
-          
+          # Collecting all target accounts including those under OUs
+          for ta in targetAccounts:
+            if ta.isdigit():
+              acc = str(ta)
+              accountList.append(acc)
+            else:
+              for page in accounts_paginator.paginate(ParentId=ta):
+                for accounts in page['Accounts']:
+                  accountList.append(accounts['Id'])
+              for page in ou_paginator.paginate(ParentId=ta):
+                for ou in page['OrganizationalUnits']:
+                  for child_ou in accounts_paginator.paginate(ParentId=ou['Id']):
+                    for accounts in child_ou['Accounts']:
+                      accountList.append(accounts['Id'])
+
           #Workaround: TargetLocation has a limit of 50 accounts - https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_TargetLocation.html    
-          targetAccountList = [targetAccounts[x:x+50] for x in range(0, len(targetAccounts), 50)]
+          targetAccountList = [accountList[x:x+50] for x in range(0, len(accountList), 50)]
               
           for accounts in targetAccountList:     
             for tr in targetRegions:
@@ -351,7 +367,7 @@ mainSteps:
         additionalArguments: '{{ additionalArguments }}'
         targetKey: '{{ targetKey }}'
         targetValues: '{{ targetValues }}'
-        targetAccounts: '{{ addPackageToDistributor.fullTargetAccountList }}'
+        targetAccounts: '{{ targetAccounts }}'
         targetRegions: '{{ targetRegions }}'
         maxConcurrency: '{{ maxConcurrency }}'
         maxErrors: '{{ maxErrors }}'
