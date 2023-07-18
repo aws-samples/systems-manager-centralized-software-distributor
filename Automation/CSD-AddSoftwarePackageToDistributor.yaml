@@ -147,8 +147,7 @@ mainSteps:
                       )
 
               if documentResponse['Document']['VersionName'] == version:
-            		print('Document to be updated with name '+ package +' has the same metadata and content as document version provided in request. Proceeding to sharing package with member accounts.')
-        
+            		print('Document to be updated with name '+ package +' has the same metadata and content as document version provided in request. Proceeding to sharing package with member accounts.'        
         			else:        
                 print(package+' already exists, creating a new version')
 
